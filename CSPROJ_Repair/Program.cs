@@ -11,16 +11,13 @@ namespace CSPROJ
 {
     public class CSPROJ_Repair
     {
-        //public static string filePath = @"C:\Users\Zakery\Documents\FundView.MVC.UI";
-        //public static string[] org_doc = File.ReadAllLines(filePath + ".csproj");
-        //public static StreamWriter new_doc = new System.IO.StreamWriter(filePath + "-Updated" + ".csproj");
-        //public static string filePath = @"C:\Users\Zakery\Documents\testing";
-        //public static string[] org_doc = File.ReadAllLines(filePath + ".csproj");
-        //public static StreamWriter new_doc = new System.IO.StreamWriter(filePath + "-Updated" + ".csproj");
-        //public string filePath { get; set; }
-        //public string[] org_doc { get; set; }
-        //public StreamWriter new_doc { get; set; }
+        public string filePath;
         public string[] org_doc;
+        public StreamWriter new_doc;
+        public List<string> SuperTagDictionary = new List<string>(new string[] { "ItemGroup" });
+        public List<string> GeneralTagDictionary = new List<string>(new string[] { "Compile", "Content", "None", "EmbeddedResource", "ProjectReference", "WCFMetadata", "Folder", "Reference", "Service", "ExcludeFromBuild" });
+        public List<string> InternalTagDictionary = new List<string>(new string[] { "<AutoGen>", "<DesignTime>", "<DependentUpon>", "<SubType>", "<Generator>", "<LastGenOutput>", "<CopyToOutputDirectory>", "<Project>", "<Name>", "<Private>", "<HintPath>", "<SpecificVersion>", "<DebugType>", "<DefineConstants>", "<PublishDatabases>", "<ErrorReport>", "<EmbedInteropTypes>" }); //If it's ugly, but it works, give it a job.
+
         public CSPROJ_Repair(string path)
         {
             this.filePath = path;
@@ -32,9 +29,6 @@ namespace CSPROJ
         {
             string line;
             long counter = 0;
-            List<string> SuperTagDictionary = new List<string>(new string[] { "ItemGroup" });
-            List<string> GeneralTagDictionary = new List<string>(new string[] { "Compile", "Content", "None", "EmbeddedResource", "ProjectReference", "WCFMetadata", "Folder", "Reference", "Service", "ExcludeFromBuild" });
-            List<string> InternalTagDictionary = new List<string>(new string[] { "<AutoGen>", "<DesignTime>", "<DependentUpon>", "<SubType>", "<Generator>", "<LastGenOutput>", "<CopyToOutputDirectory>", "<Project>", "<Name>", "<Private>", "<HintPath>", "<SpecificVersion>", "<DebugType>", "<DefineConstants>", "<PublishDatabases>", "<ErrorReport>", "<EmbedInteropTypes>" }); //If it's ugly, but it works, give it a job.
 
             //Read document line by line
             while (counter < org_doc.Length)
@@ -43,11 +37,11 @@ namespace CSPROJ
 
                 if (SuperTagDictionary.Any(x => line.Contains("<" + x))) //Super tags are always closed by </Tag>, never />
                 {
-                    counter = SuperTagStrategy(line, counter, SuperTagDictionary, GeneralTagDictionary, InternalTagDictionary);
+                    counter = SuperTagStrategy(line, counter);
                 }
                 else if (GeneralTagDictionary.Any(x => line.Contains("<" + x)) && !line.Contains("/>"))
                 {
-                    counter = GeneralTagStrategy(line, counter, GeneralTagDictionary, InternalTagDictionary);
+                    counter = GeneralTagStrategy(line, counter);
                 }
                 else
                 {
@@ -58,8 +52,7 @@ namespace CSPROJ
             new_doc.Flush();
             new_doc.Close();
         }
-
-
+        
         //Internal tags always follow the pattern of:
         // <Tag>"text"</Tag>
         public long InternalTagStrategy(string line, long counter, List<string> InternalTagDictionary)
@@ -74,8 +67,8 @@ namespace CSPROJ
                 reg = Regex.Match(line, @"(?<=\>)([^\<]*)");
                 var value = reg.Groups[1].Value;
                 line = "<" + tag_value + ">" + value + "</" + tag_value + ">";
-
             }
+
             new_doc.WriteLine(line);
             counter++;
             return counter;
@@ -86,7 +79,7 @@ namespace CSPROJ
         // <Compile Include ="text">
         //      Additional tags here
         // </Compile>
-        public long GeneralTagStrategy(string line, long counter, List<string> GeneralTagDictionary, List<string> InternalTagDictionary)
+        public long GeneralTagStrategy(string line, long counter)
         {
             string new_line;
 
@@ -134,7 +127,7 @@ namespace CSPROJ
         //      <InternalTag>True<InternalTag>
         //  </GeneralTag>   
         //</SuperTag>
-        public long SuperTagStrategy(string line, long counter, List<string> SuperTagDictionary, List<string> GeneralTagDictionary, List<string> InternalTagDictionary)
+        public long SuperTagStrategy(string line, long counter)
         {
             var tag = SuperTagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
 
@@ -142,12 +135,10 @@ namespace CSPROJ
             new_doc.WriteLine(org_doc[counter]);
             counter++;
 
-            // The next line must be a general tag. While you see general tags, check if they're valid and write them and their subtags. This is handled by GeneralTagStrategy.
-            while (GeneralTagDictionary.Any(x => org_doc[counter].Contains(x))) // While the line contains a tag in the GeneralDictionary...
+            while (GeneralTagDictionary.Any(x => org_doc[counter].Contains(x)))
             {
-                counter = GeneralTagStrategy(org_doc[counter], counter, GeneralTagDictionary, InternalTagDictionary);
+                counter = GeneralTagStrategy(org_doc[counter], counter);
             }
-            // When the above loop breaks, it's because we've hit a </GeneralTag> or a </SuperTag>
             if (!org_doc[counter].Contains("</" + tag))
             {
                 new_doc.WriteLine("</" + tag + ">");
