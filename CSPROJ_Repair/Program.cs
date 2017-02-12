@@ -14,7 +14,10 @@ namespace CSPROJ_Repair
 
         public static class CSPROJ
         {
-            public static string filePath = @"C:\Users\Zakery\Documents\FundView.MVC.UI";
+            //public static string filePath = @"C:\Users\Zakery\Documents\FundView.MVC.UI";
+            //public static string[] org_doc = File.ReadAllLines(filePath + ".csproj");
+            //public static StreamWriter new_doc = new System.IO.StreamWriter(filePath + "-Updated" + ".csproj");
+            public static string filePath = @"C:\Users\Zakery\Documents\testing";
             public static string[] org_doc = File.ReadAllLines(filePath + ".csproj");
             public static StreamWriter new_doc = new System.IO.StreamWriter(filePath + "-Updated" + ".csproj");
         };
@@ -23,15 +26,16 @@ namespace CSPROJ_Repair
         {
             string line;
             long counter = 0;
-            List<string> TagDictionary = new List<string>(new string[] { "Compile", "Content", "None", "EmbeddedResource" });
+            List<string> SuperTagDictionary = new List<string>(new string[] {"ItemgGroup" });
+            List<string> GeneralTagDictionary = new List<string>(new string[] { "Compile", "Content", "None", "EmbeddedResource", "ProjectReference", "WCFMetadata", "Folder", "Reference" });
             //Read document line by line
             while (counter < CSPROJ.org_doc.Length)
             {
                 line = CSPROJ.org_doc[counter];
 
-                if(TagDictionary.Any(x => line.Contains("<" + x)) && !line.Contains("/>"))
+                if(GeneralTagDictionary.Any(x => line.Contains("<" + x)) && !line.Contains("/>"))
                 {
-                    counter = GeneralStrategy(line, counter, TagDictionary);
+                    counter = GeneralStrategy(line, counter, GeneralTagDictionary);
                 }else
                 {
                     CSPROJ.new_doc.WriteLine(line);
@@ -69,14 +73,14 @@ namespace CSPROJ_Repair
         // <Compile Include ="text">
         //      Additional tags here
         // </Compile>
-        static long GeneralStrategy(string line, long counter, List<string> TagDictionary)
+        static long GeneralStrategy(string line, long counter, List<string> GeneralTagDictionary)
         {
             string new_line;
             
-            List<string> InternalTagDictionary = new List<string>(new string[] { "<AutoGen>", "<DesignTime>", "<DependentUpon>", "<SubType>", "<Generator>", "<LastGenOutput>", "<CopyToOutputDirectory>" });
+            List<string> InternalTagDictionary = new List<string>(new string[] { "<AutoGen>", "<DesignTime>", "<DependentUpon>", "<SubType>", "<Generator>", "<LastGenOutput>", "<CopyToOutputDirectory>", "<Service>", "<Project>", "<Name>", "<Private>", "<HintPath>"});
             // If not one of the above tags, a closing tag is needed, so the line needs rewriting. 
 
-            var tag = TagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
+            var tag = GeneralTagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
 
             if (!InternalTagDictionary.Any(x => CSPROJ.org_doc[counter + 1].Contains(x)))
             {
