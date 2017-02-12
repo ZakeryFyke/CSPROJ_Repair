@@ -39,9 +39,9 @@ namespace CSPROJ_Repair
                 {
                     counter = SuperTagStrategy(line, counter, SuperTagDictionary, GeneralTagDictionary, InternalTagDictionary);
                 }
-                else if(GeneralTagDictionary.Any(x => line.Contains("<" + x)) && !line.Contains("/>"))
+                else if (GeneralTagDictionary.Any(x => line.Contains("<" + x)) && !line.Contains("/>"))
                 {
-                    counter = GeneralStrategy(line, counter, GeneralTagDictionary, InternalTagDictionary);
+                    counter = GeneralTagStrategy(line, counter, GeneralTagDictionary, InternalTagDictionary);
                 }else
                 {
                     CSPROJ.new_doc.WriteLine(line);
@@ -79,11 +79,9 @@ namespace CSPROJ_Repair
         // <Compile Include ="text">
         //      Additional tags here
         // </Compile>
-        static long GeneralStrategy(string line, long counter, List<string> GeneralTagDictionary, List<string> InternalTagDictionary)
+        static long GeneralTagStrategy(string line, long counter, List<string> GeneralTagDictionary, List<string> InternalTagDictionary)
         {
             string new_line;
-
-            
 
             var tag = GeneralTagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
             // If it doesn't contain an InternalTag, it's missing a /> tag and simply needs rewriting. 
@@ -106,11 +104,17 @@ namespace CSPROJ_Repair
                     new_line = CSPROJ.org_doc[counter];
                     counter = InternalTagStrategy(new_line, counter, InternalTagDictionary);
                 }
+                //If the closing tag is missing, add the proper tag, otherwise just write the line. 
                 if(!CSPROJ.org_doc[counter].Contains("</" + tag))
                 {
                     CSPROJ.new_doc.WriteLine("</" + tag + ">");
                     counter++;
-                }   
+                }else
+                {
+                    CSPROJ.new_doc.WriteLine(CSPROJ.org_doc[counter]);
+                    counter++;
+                }
+                
             }
             return counter;
         }
@@ -124,26 +128,18 @@ namespace CSPROJ_Repair
         //</SuperTag>
         static long SuperTagStrategy(string line, long counter, List<string> SuperTagDictionary, List<string> GeneralTagDictionary, List<string> InternalTagDictionary)
         {
-            string new_line;
-
             var tag = SuperTagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
-            //Since SuperTags always contain GeneralTags, we can skip the check.
+
+            // Write the SuperTag line and move to the next line
             CSPROJ.new_doc.WriteLine(CSPROJ.org_doc[counter]);
             counter++;
-                                                                                         // To stop things like "</Reference>", which should end the loop, from continuing it
-            while (GeneralTagDictionary.Any(x => CSPROJ.org_doc[counter].Contains(x)) && !CSPROJ.org_doc[counter].Trim().StartsWith("</")) 
+
+            // The next line must be a general tag. While you see general tags, check if they're valid and write them and their subtags. This is handled by GeneralTagStrategy.
+            while(GeneralTagDictionary.Any(x => CSPROJ.org_doc[counter].Contains(x))) // While the line contains a tag in the GeneralDictionary...
             {
-
-                //Confirm that the General Tag is valid and add it.
-                new_line = CSPROJ.org_doc[counter];
-                var tag2 = GeneralTagDictionary.Where(x => new_line.Contains(x)).FirstOrDefault();
-                if (new_line.Contains("<ItemGroup>"))
-                {
-
-                }
-
-                counter = GeneralStrategy(new_line, counter, GeneralTagDictionary, InternalTagDictionary);
+                counter = GeneralTagStrategy(CSPROJ.org_doc[counter], counter, GeneralTagDictionary, InternalTagDictionary);
             }
+            // When the above loop breaks, it's because we've hit a </GeneralTag> or a </SuperTag>
             if (!CSPROJ.org_doc[counter].Contains("</" + tag))
             {
                 CSPROJ.new_doc.WriteLine("</" + tag + ">");
