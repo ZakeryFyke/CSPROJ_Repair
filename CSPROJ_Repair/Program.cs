@@ -26,6 +26,7 @@ namespace CSPROJ
             this.new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
         }
 
+        // First fixes any missing or damaged tags, then removes any duplicate lines.
         public void RepairCSProj()
         {
             string line;
@@ -53,8 +54,6 @@ namespace CSPROJ
             new_doc.Flush();
             new_doc.Close();
             DuplicateStrategy();
-
-
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
@@ -63,7 +62,7 @@ namespace CSPROJ
             List<string> temp_Document = File.ReadAllLines(filePath + "-Updated" + ".csproj").ToList();
             var compileList = new List<string>();
 
-
+            // Compile tags seem to be the only duplicates which appear.
             foreach (var line in temp_Document)
             {
                 if (line.Contains("<Compile Include=") && line.Contains("/>"))
@@ -90,7 +89,7 @@ namespace CSPROJ
             new_doc.Close();
         }
 
-        //Internal tags always follow the pattern of:
+        // Internal tags always follow the pattern of:
         // <Tag>"text"</Tag>
         public long InternalTagStrategy(string line, long counter, List<string> InternalTagDictionary)
         {
@@ -158,12 +157,12 @@ namespace CSPROJ
         }
 
         // Super Tag patterns always follow something similar to that found below. They never directly contain an InternalTag unless it's inside a GeneralTag.
-        //<SuperTag>
+        // <SuperTag>
         //  <GeneralTag>.../>
         //  <GeneralTag>
         //      <InternalTag>True<InternalTag>
         //  </GeneralTag>   
-        //</SuperTag>
+        // </SuperTag>
         public long SuperTagStrategy(string line, long counter)
         {
             var tag = SuperTagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
