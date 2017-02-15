@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 
 namespace CSPROJ
 {
@@ -51,8 +52,44 @@ namespace CSPROJ
             }
             new_doc.Flush();
             new_doc.Close();
+            DuplicateStrategy();
+
+
         }
-        
+
+        // Common issue is duplicate <Compile Include= "..." /> tags.
+        public void DuplicateStrategy()
+        {
+            List<string> temp_Document = File.ReadAllLines(filePath + "-Updated" + ".csproj").ToList();
+            var compileList = new List<string>();
+
+
+            foreach (var line in temp_Document)
+            {
+                if (line.Contains("<Compile Include=") && line.Contains("/>"))
+                {
+                    compileList.Add(line);
+                }
+            }
+
+            //If there's more than one, add each duplicate to duplicateList for removal
+            var duplicateList = compileList.GroupBy(x => x)
+                .SelectMany(group => group.Skip(1));
+
+            foreach (var duplicate in duplicateList)
+            {
+                temp_Document.Remove(duplicate);
+            }
+            new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
+            foreach (var line in temp_Document)
+            {
+                new_doc.WriteLine(line);
+            }
+
+            new_doc.Flush();
+            new_doc.Close();
+        }
+
         //Internal tags always follow the pattern of:
         // <Tag>"text"</Tag>
         public long InternalTagStrategy(string line, long counter, List<string> InternalTagDictionary)

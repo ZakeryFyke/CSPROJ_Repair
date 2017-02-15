@@ -10,3 +10,6 @@ C:\Users\Zakery\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\obj\Debug\CSPROJ_Re
 C:\Users\Zakery\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\bin\Debug\CSPROJ_Repair.exe
 C:\Users\Zakery\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\bin\Debug\CSPROJ_Repair.pdb
 C:\Users\Zakery\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\obj\Debug\CSPROJ_Repair.csprojResolveAssemblyReference.cache
+C:\Users\Zak\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\bin\Debug\CSPROJ_Repair.exe.config
+C:\Users\Zak\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\obj\Debug\CSPROJ_Repair.exe
+C:\Users\Zak\Documents\GitHub\CSPROJ_Repair\CSPROJ_Repair\obj\Debug\CSPROJ_Repair.pdb
