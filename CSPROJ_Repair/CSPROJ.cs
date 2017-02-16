@@ -57,6 +57,7 @@ namespace CSPROJ
             DuplicateStrategy();
             GetAllTags();
 
+            var bo = AllTags.Except(InternalTagDictionary).ToList();
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
@@ -192,14 +193,16 @@ namespace CSPROJ
             // There's probably a better way to do this than to keep opening up the updated document, but w/e
 
             XDocument doc = XDocument.Load(filePath + "-Updated" + ".csproj");
+            var Tags = new List<string>();
 
-            //foreach (var name in doc.Root.DescendantNodes().OfType<XElement>()
-            //    .Select(x => x.Name).Distinct())
-            //{
-            //    AllTags.Add(name.ToString());
-            //}
+            foreach (var name in doc.Root.DescendantNodes().OfType<XElement>()
+                .Select(x => x.Name).Distinct())
+            {
+                Tags.Add(name.ToString());
+            }
 
-            var Tags = doc.Descendants().Distinct();
+            // Iunno dude this is at the front of all the tags I want. 
+            AllTags = Tags.Select(y => y.Replace("{http://schemas.microsoft.com/developer/msbuild/2003}","")).ToList();
         }
     }
 }
