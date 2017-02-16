@@ -15,6 +15,7 @@ namespace CSPROJ
         public string filePath;
         public string[] org_doc;
         public StreamWriter new_doc;
+        public List<string> AllTags = new List<string>();
         public List<string> SuperTagDictionary = new List<string>(new string[] { "ItemGroup" });
         public List<string> GeneralTagDictionary = new List<string>(new string[] { "Compile", "Content", "None", "EmbeddedResource", "ProjectReference", "WCFMetadata", "Folder", "Reference", "Service", "ExcludeFromBuild" });
         public List<string> InternalTagDictionary = new List<string>(new string[] { "<AutoGen>", "<DesignTime>", "<DependentUpon>", "<SubType>", "<Generator>", "<LastGenOutput>", "<CopyToOutputDirectory>", "<Project>", "<Name>", "<Private>", "<HintPath>", "<SpecificVersion>", "<DebugType>", "<DefineConstants>", "<PublishDatabases>", "<ErrorReport>", "<EmbedInteropTypes>" }); //If it's ugly, but it works, give it a job.
@@ -54,6 +55,8 @@ namespace CSPROJ
             new_doc.Flush();
             new_doc.Close();
             DuplicateStrategy();
+            GetAllTags();
+
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
@@ -182,6 +185,21 @@ namespace CSPROJ
             }
 
             return counter;
+        }
+
+        public void GetAllTags()
+        {
+            // There's probably a better way to do this than to keep opening up the updated document, but w/e
+
+            XDocument doc = XDocument.Load(filePath + "-Updated" + ".csproj");
+
+            //foreach (var name in doc.Root.DescendantNodes().OfType<XElement>()
+            //    .Select(x => x.Name).Distinct())
+            //{
+            //    AllTags.Add(name.ToString());
+            //}
+
+            var Tags = doc.Descendants().Distinct();
         }
     }
 }
