@@ -34,21 +34,31 @@ namespace CSPROJ
             }
             else
             {
-                var file = new StreamWriter(path);
+                var file = new StreamWriter(path, true);
                 file.Close();// Don't worry about it
             }
-            this.doc = new StreamWriter(path);
+            doc = new StreamWriter(path, true);
         }
 
         public void UpdateChangeLog()
         {
             doc.WriteLine("-----------------");
             doc.WriteLine("Change Log for " + DateTime.Now + ":");
-            doc.WriteLine("Duplicates Removed: " + this.duplicates_removed);
-            doc.WriteLine("Extra Text Removed: " + this.extra_text_removed);
-            doc.WriteLine("Internal Tags Repaired: " + this.internal_tags_repaired);
-            doc.WriteLine("General Tags Repaired: " + this.general_tags_repaired);
-            doc.WriteLine("Super Tags Repaired: " + this.super_tags_repaired);
+            doc.WriteLine("Duplicates Removed: " + duplicates_removed);
+            doc.WriteLine("Extra Text Removed: " + extra_text_removed);
+            doc.WriteLine("Internal Tags Repaired: " + internal_tags_repaired);
+            doc.WriteLine("General Tags Repaired: " + general_tags_repaired);
+            doc.WriteLine("Super Tags Repaired: " + super_tags_repaired);
+            //var lines = new List<string>();
+            //lines.Add("Change Log for " + DateTime.Now + ":");
+            //lines.Add("Duplicates Removed: " + duplicates_removed);
+            //lines.Add("Extra Text Removed: " + extra_text_removed);
+            //lines.Add("Internal Tags Removed: " + internal_tags_repaired);
+            //lines.Add("General Tags Removed: " + general_tags_repaired);
+            //lines.Add("Super Tags Removed: " + super_tags_repaired);
+
+            //doc.WriteLine(lines);
+
             doc.Flush();
             doc.Close();
         }
@@ -68,11 +78,11 @@ namespace CSPROJ
 
         public CSPROJ_Repair(string path)
         {
-            this.filePath = path;
-            this.org_doc = File.ReadAllLines(filePath + ".csproj");
-            this.temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
-            this.new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
-            this.log = new ChangeLog(filePath);
+            filePath = path;
+            org_doc = File.ReadAllLines(filePath + ".csproj");
+            temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
+            new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
+            log = new ChangeLog(filePath);
         }
 
         // First fixes any missing or damaged tags, then removes any duplicate lines.
@@ -88,7 +98,7 @@ namespace CSPROJ
             //File.Delete(filePath + "-Temp" + ".csproj");
             
             // There's probably a less ugly way to do this
-            this.temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
+            temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
 
             //Read the temporary document line by line
             while (counter < tmp_doc.Length)
@@ -116,7 +126,7 @@ namespace CSPROJ
             temp_doc.Close();
             DuplicateStrategy();
             //GetAllTags();
-            this.log.UpdateChangeLog();
+            log.UpdateChangeLog();
         }
 
         // Occasionally, extraneous text is inserted into the document and must be removed. 
@@ -139,7 +149,7 @@ namespace CSPROJ
                     }else{
                         Console.WriteLine("Disregarding " + line.TrimStart());
                     }
-                    this.log.extra_text_removed++;
+                    log.extra_text_removed++;
                 }
                 counter++;
             }
@@ -171,18 +181,18 @@ namespace CSPROJ
             {
                 tmp_doc.Remove(duplicate);
                 Console.WriteLine("Removing duplicate line \"" + duplicate.TrimStart() + "\"");
-                this.log.duplicates_removed++;
+                log.duplicates_removed++;
             }
 
             //temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
 
             foreach (var line in tmp_doc)
             {
-                this.new_doc.WriteLine(line);
+                new_doc.WriteLine(line);
             }
 
-            this.new_doc.Flush();
-            this.new_doc.Close();
+            new_doc.Flush();
+            new_doc.Close();
         }
 
         // Internal tags always follow the pattern of:
@@ -199,7 +209,7 @@ namespace CSPROJ
                 reg = Regex.Match(line, @"(?<=\>)([^\<]*)");
                 var value = reg.Groups[1].Value;
                 line = "<" + tag_value + ">" + value + "</" + tag_value + ">";
-                this.log.internal_tags_repaired++;
+                log.internal_tags_repaired++;
             }
 
             temp_doc.WriteLine(line);
@@ -225,7 +235,7 @@ namespace CSPROJ
                 new_line = "<" + tag + " Include=" + '"' + CSFile + '"' + " />";
                 temp_doc.WriteLine(new_line);
                 counter++;
-                this.log.general_tags_repaired++;
+                log.general_tags_repaired++;
             }
             else
             {
@@ -243,7 +253,7 @@ namespace CSPROJ
                 {
                     temp_doc.WriteLine("</" + tag + ">");
                     counter++;
-                    this.log.general_tags_repaired++;
+                    log.general_tags_repaired++;
                 }
                 else
                 {
@@ -278,7 +288,7 @@ namespace CSPROJ
             {
                 temp_doc.WriteLine("</" + tag + ">");
                 counter++;
-                this.log.super_tags_repaired++;
+                log.super_tags_repaired++;
             }
 
             return counter;
