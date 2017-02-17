@@ -236,6 +236,7 @@ namespace CSPROJ
                 temp_doc.WriteLine(new_line);
                 counter++;
                 log.general_tags_repaired++;
+                Console.WriteLine(counter);
             }
             else
             {
