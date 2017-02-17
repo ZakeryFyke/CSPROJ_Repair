@@ -10,13 +10,25 @@ using System.Xml.Linq;
 
 namespace CSPROJ
 {
+
+    public class ChangeLog
+    {
+        public long duplicates_removed = 0;
+        public long extra_text_removed = 0;
+        public long internal_tags_repaired = 0;
+        public long general_tags_repaired = 0;
+        public long super_tags_repaired = 0;
+        public StreamWriter doc;
+    }
+
     public class CSPROJ_Repair
     {
         public string filePath;
         public string[] org_doc;
         public StreamWriter temp_doc;
         public StreamWriter new_doc;
-        public List<string> AllTags = new List<string>();
+        public ChangeLog log;
+        //public List<string> AllTags = new List<string>();
         public List<string> SuperTagDictionary = new List<string>(new string[] { "ItemGroup" });
         public List<string> GeneralTagDictionary = new List<string>(new string[] { "Compile", "Content", "None", "EmbeddedResource", "ProjectReference", "WCFMetadata", "Folder", "Reference", "Service", "ExcludeFromBuild" });
         public List<string> InternalTagDictionary = new List<string>(new string[] { "<AutoGen>", "<DesignTime>", "<DependentUpon>", "<SubType>", "<Generator>", "<LastGenOutput>", "<CopyToOutputDirectory>", "<Project>", "<Name>", "<Private>", "<HintPath>", "<SpecificVersion>", "<DebugType>", "<DefineConstants>", "<PublishDatabases>", "<ErrorReport>", "<EmbedInteropTypes>" }); //If it's ugly, but it works, give it a job.
@@ -27,18 +39,45 @@ namespace CSPROJ
             this.org_doc = File.ReadAllLines(filePath + ".csproj");
             this.temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
             this.new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
+
+            
+        }
+
+        public void CreateChangeLog()
+        {
+            var path = filePath + "changelog.txt";
+
+            if(!File.Exists(path))
+            {
+                StreamWriter sw = File.CreateText(path);
+            }
+
+            this.log.doc = new StreamWriter(path);
+            this.log.doc.WriteLine("---------------------");
+            this.log.doc.WriteLine("Change Log for " + DateTime.Now + ":");
         }
 
         // First fixes any missing or damaged tags, then removes any duplicate lines.
         public void RepairCSProj()
         {
+            CreateChangeLog();
+
             string line;
             long counter = 0;
 
-            //Read document line by line
-            while (counter < org_doc.Length)
+            // First, remove any extra text outside of tags that might make this an invalid document
+            RemoveExtraText();
+
+            var tmp_doc = File.ReadAllLines(filePath + "-Temp" + ".csproj");
+            //File.Delete(filePath + "-Temp" + ".csproj");
+            
+            // There's probably a less ugly way to do this
+            this.temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
+
+            //Read the temporary document line by line
+            while (counter < tmp_doc.Length)
             {
-                line = org_doc[counter];
+                line = tmp_doc[counter];
 
                 if (SuperTagDictionary.Any(x => line.Contains("<" + x))) //Super tags are always closed by </Tag>, never />
                 {
@@ -54,12 +93,13 @@ namespace CSPROJ
                     counter++;
                 }
             }
+
+            // When we reach this point, all tags have been repaired and are sitting in the temp_document. All that's left is to remove duplicates. 
+
             temp_doc.Flush();
             temp_doc.Close();
             DuplicateStrategy();
-            GetAllTags();
-            RemoveExtraText();
-
+            //GetAllTags();
         }
 
         // Occasionally, extraneous text is inserted into the document and must be removed. 
@@ -67,33 +107,38 @@ namespace CSPROJ
         {
             string line;
             long counter = 1;
-            var tmp_doc = File.ReadAllLines(filePath + "-Temp" + ".csproj");
-            new_doc.WriteLine(tmp_doc[0]); // This line contains the xml version and I don't wanna deal with it. :) 
+            var tmp_doc = File.ReadAllLines(filePath + ".csproj");
+            temp_doc.WriteLine(tmp_doc[0]); // This line contains the xml version and I don't wanna deal with it. :) 
             while(counter < tmp_doc.Length)
             {
                 line = tmp_doc[counter];
-                if(AllTags.Any(x => line.Contains(x)) || line == "")
+                if ((line.Contains("<") || line.Contains(">")))
                 {
-                    new_doc.WriteLine(line);
+                    temp_doc.WriteLine(line);
                 }else
                 {
-                    Console.WriteLine("Disgarding " + line);
+                    if(line == ""){
+                        Console.WriteLine("Disgarding a blank line.");
+                    }else{
+                        Console.WriteLine("Disregarding " + line.TrimStart());
+                    }
+                    
                 }
                 counter++;
             }
 
-            new_doc.Flush();
-            new_doc.Close();   
+            temp_doc.Flush();
+            temp_doc.Close();   
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
         public void DuplicateStrategy()
         {
-            List<string> temp_Document = File.ReadAllLines(filePath + "-Temp" + ".csproj").ToList();
+            List<string> tmp_doc = File.ReadAllLines(filePath + "-Temp" + ".csproj").ToList();
             var compileList = new List<string>();
 
             // Compile tags seem to be the only duplicates which appear.
-            foreach (var line in temp_Document)
+            foreach (var line in tmp_doc)
             {
                 if (line.Contains("<Compile Include=") && line.Contains("/>"))
                 {
@@ -107,16 +152,19 @@ namespace CSPROJ
 
             foreach (var duplicate in duplicateList)
             {
-                temp_Document.Remove(duplicate);
-            }
-            temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
-            foreach (var line in temp_Document)
-            {
-                temp_doc.WriteLine(line);
+                tmp_doc.Remove(duplicate);
+                Console.WriteLine("Removing duplicate line \"" + duplicate.TrimStart() + "\"");
             }
 
-            temp_doc.Flush();
-            temp_doc.Close();
+            //temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
+
+            foreach (var line in tmp_doc)
+            {
+                this.new_doc.WriteLine(line);
+            }
+
+            this.new_doc.Flush();
+            this.new_doc.Close();
         }
 
         // Internal tags always follow the pattern of:
@@ -133,6 +181,7 @@ namespace CSPROJ
                 reg = Regex.Match(line, @"(?<=\>)([^\<]*)");
                 var value = reg.Groups[1].Value;
                 line = "<" + tag_value + ">" + value + "</" + tag_value + ">";
+                
             }
 
             temp_doc.WriteLine(line);
@@ -214,21 +263,21 @@ namespace CSPROJ
             return counter;
         }
 
-        public void GetAllTags()
-        {
-            // There's probably a better way to do this than to keep opening up the updated document, but w/e
+        //public void GetAllTags()
+        //{
+        //    // There's probably a better way to do this than to keep opening up the updated document, but w/e
 
-            XDocument doc = XDocument.Load(filePath + "-Temp" + ".csproj");
-            var Tags = new List<string>();
+        //    XDocument doc = XDocument.Load(filePath + "-Temp" + ".csproj");
+        //    var Tags = new List<string>();
 
-            foreach (var name in doc.Root.DescendantNodes().OfType<XElement>()
-                .Select(x => x.Name).Distinct())
-            {
-                Tags.Add(name.ToString());
-            }
+        //    foreach (var name in doc.Root.DescendantNodes().OfType<XElement>()
+        //        .Select(x => x.Name).Distinct())
+        //    {
+        //        Tags.Add(name.ToString());
+        //    }
 
-            // Iunno dude this is at the front of all the tags I want. 
-            AllTags = Tags.Select(y => y.Replace("{http://schemas.microsoft.com/developer/msbuild/2003}","")).OrderBy(x => x).ToList();
-        }
+        //    // Iunno dude this is at the front of all the tags I want. 
+        //    AllTags = Tags.Select(y => y.Replace("{http://schemas.microsoft.com/developer/msbuild/2003}","")).OrderBy(x => x).ToList();
+        //}
     }
 }
