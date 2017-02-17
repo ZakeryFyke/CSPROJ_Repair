@@ -30,6 +30,35 @@ namespace CSPROJ
         // First fixes any missing or damaged tags, then removes any duplicate lines.
         public void RepairCSProj()
         {
+
+
+            // Experimenting with some new techniques
+            XmlReader doc = new XmlTextReader(filePath + ".csproj");
+            while (doc.Read())
+            {
+                if (doc.Name.Length > 0)
+                {
+                    if (doc.Depth == 1 && doc.Name.Length > 0)
+                    {
+                        SuperTagDictionary.Add(doc.Name);
+                    }
+                    //else if (doc.Depth == 2 && doc.Name.Length > 0)
+                    //{
+                    //    MiddleLevelTags.Add(doc.Name);
+                    //}
+                    //else
+                    //{
+                    //    LowerLevelTags.Add(doc.Name);
+                    //}
+                }
+
+            }
+            // Seems to be the only one that works with existing model 
+            SuperTagDictionary = SuperTagDictionary.Distinct().OrderBy(x => x).ToList();
+
+
+
+
             string line;
             long counter = 0;
 
@@ -57,36 +86,6 @@ namespace CSPROJ
             DuplicateStrategy();
             GetAllTags();
 
-
-            // Experimenting with some new techniques
-            XmlReader doc = new XmlTextReader(filePath + "-Updated" + ".csproj");
-            var TopLevelTags = new List<string>();
-            var MiddleLevelTags = new List<string>();
-            var LowerLevelTags = new List<string>();
-            while (doc.Read())
-            {
-                if(doc.Name.Length > 0)
-                {
-                    if (doc.Depth == 1 && doc.Name.Length > 0)
-                    {
-                        TopLevelTags.Add(doc.Name);
-                    }
-                    else if (doc.Depth == 2 && doc.Name.Length > 0)
-                    {
-                        MiddleLevelTags.Add(doc.Name);
-                    }
-                    else
-                    {
-                        LowerLevelTags.Add(doc.Name);
-                    }
-                }
-
-            }
-            TopLevelTags = TopLevelTags.Distinct().OrderBy(x => x).ToList();
-            MiddleLevelTags = MiddleLevelTags.Distinct().OrderBy(x => x).ToList();
-            LowerLevelTags = LowerLevelTags.Distinct().OrderBy(x => x).ToList();
-
-            var HoustonWeHaveAProblem = MiddleLevelTags.Intersect(TopLevelTags);
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
