@@ -30,35 +30,28 @@ namespace CSPROJ
             if (!File.Exists(path))
             {
                 var file = File.CreateText(path);
-                file.Close();
+                file.Close(); // Iunno, for reasons.
             }
             else
             {
-                var file = new StreamWriter(@"C:\Users\Zakery\Documents\changelog.txt");
-                file.Close();
+                var file = new StreamWriter(path);
+                file.Close();// Don't worry about it
             }
-            this.doc = new StreamWriter(@"C:\Users\Zakery\Documents\changelog.txt");
+            this.doc = new StreamWriter(path);
         }
 
-        //public StreamWriter CreateChangeLog()
-        //{
-        //    var index = filePath.LastIndexOf("/");
-        //    var path = filePath.Substring(0, filePath.LastIndexOf(@"\") + 1) + "changelog.txt";
-
-        //    if (!File.Exists(path))
-        //    {
-        //        var file = File.CreateText(path);
-        //        //file.Close();
-        //        return file;
-        //    }
-        //    else
-        //    {
-        //        var file = new StreamWriter(@"C:\Users\Zakery\Documents\changelog.txt");
-        //        //file.Close();
-        //        return file;
-        //    }
-            
-        //}
+        public void UpdateChangeLog()
+        {
+            doc.WriteLine("-----------------");
+            doc.WriteLine("Change Log for " + DateTime.Now + ":");
+            doc.WriteLine("Duplicates Removed: " + this.duplicates_removed);
+            doc.WriteLine("Extra Text Removed: " + this.extra_text_removed);
+            doc.WriteLine("Internal Tags Repaired: " + this.internal_tags_repaired);
+            doc.WriteLine("General Tags Repaired: " + this.general_tags_repaired);
+            doc.WriteLine("Super Tags Repaired: " + this.super_tags_repaired);
+            doc.Flush();
+            doc.Close();
+        }
     }
 
     public class CSPROJ_Repair
@@ -85,8 +78,6 @@ namespace CSPROJ
         // First fixes any missing or damaged tags, then removes any duplicate lines.
         public void RepairCSProj()
         {
-            
-
             string line;
             long counter = 0;
 
@@ -125,6 +116,7 @@ namespace CSPROJ
             temp_doc.Close();
             DuplicateStrategy();
             //GetAllTags();
+            this.log.UpdateChangeLog();
         }
 
         // Occasionally, extraneous text is inserted into the document and must be removed. 
@@ -147,7 +139,7 @@ namespace CSPROJ
                     }else{
                         Console.WriteLine("Disregarding " + line.TrimStart());
                     }
-                    
+                    this.log.extra_text_removed++;
                 }
                 counter++;
             }
@@ -179,6 +171,7 @@ namespace CSPROJ
             {
                 tmp_doc.Remove(duplicate);
                 Console.WriteLine("Removing duplicate line \"" + duplicate.TrimStart() + "\"");
+                this.log.duplicates_removed++;
             }
 
             //temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
@@ -206,7 +199,7 @@ namespace CSPROJ
                 reg = Regex.Match(line, @"(?<=\>)([^\<]*)");
                 var value = reg.Groups[1].Value;
                 line = "<" + tag_value + ">" + value + "</" + tag_value + ">";
-                
+                this.log.internal_tags_repaired++;
             }
 
             temp_doc.WriteLine(line);
@@ -232,6 +225,7 @@ namespace CSPROJ
                 new_line = "<" + tag + " Include=" + '"' + CSFile + '"' + " />";
                 temp_doc.WriteLine(new_line);
                 counter++;
+                this.log.general_tags_repaired++;
             }
             else
             {
@@ -249,6 +243,7 @@ namespace CSPROJ
                 {
                     temp_doc.WriteLine("</" + tag + ">");
                     counter++;
+                    this.log.general_tags_repaired++;
                 }
                 else
                 {
@@ -283,6 +278,7 @@ namespace CSPROJ
             {
                 temp_doc.WriteLine("</" + tag + ">");
                 counter++;
+                this.log.super_tags_repaired++;
             }
 
             return counter;
