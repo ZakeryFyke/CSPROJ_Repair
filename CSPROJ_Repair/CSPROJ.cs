@@ -19,6 +19,46 @@ namespace CSPROJ
         public long general_tags_repaired = 0;
         public long super_tags_repaired = 0;
         public StreamWriter doc;
+        //public StreamWriter doc
+        //{ set { CreateChangeLog(); } }
+
+        public ChangeLog(string filePath)
+        {
+            var index = filePath.LastIndexOf("/");
+            var path = filePath.Substring(0, filePath.LastIndexOf(@"\") + 1) + "changelog.txt";
+
+            if (!File.Exists(path))
+            {
+                var file = File.CreateText(path);
+                file.Close();
+            }
+            else
+            {
+                var file = new StreamWriter(@"C:\Users\Zakery\Documents\changelog.txt");
+                file.Close();
+            }
+            this.doc = new StreamWriter(@"C:\Users\Zakery\Documents\changelog.txt");
+        }
+
+        //public StreamWriter CreateChangeLog()
+        //{
+        //    var index = filePath.LastIndexOf("/");
+        //    var path = filePath.Substring(0, filePath.LastIndexOf(@"\") + 1) + "changelog.txt";
+
+        //    if (!File.Exists(path))
+        //    {
+        //        var file = File.CreateText(path);
+        //        //file.Close();
+        //        return file;
+        //    }
+        //    else
+        //    {
+        //        var file = new StreamWriter(@"C:\Users\Zakery\Documents\changelog.txt");
+        //        //file.Close();
+        //        return file;
+        //    }
+            
+        //}
     }
 
     public class CSPROJ_Repair
@@ -39,28 +79,13 @@ namespace CSPROJ
             this.org_doc = File.ReadAllLines(filePath + ".csproj");
             this.temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
             this.new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
-
-            
-        }
-
-        public void CreateChangeLog()
-        {
-            var path = filePath + "changelog.txt";
-
-            if(!File.Exists(path))
-            {
-                StreamWriter sw = File.CreateText(path);
-            }
-
-            this.log.doc = new StreamWriter(path);
-            this.log.doc.WriteLine("---------------------");
-            this.log.doc.WriteLine("Change Log for " + DateTime.Now + ":");
+            this.log = new ChangeLog(filePath);
         }
 
         // First fixes any missing or damaged tags, then removes any duplicate lines.
         public void RepairCSProj()
         {
-            CreateChangeLog();
+            
 
             string line;
             long counter = 0;
