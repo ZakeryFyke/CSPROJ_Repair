@@ -14,6 +14,7 @@ namespace CSPROJ
     {
         public string filePath;
         public string[] org_doc;
+        public StreamWriter temp_doc;
         public StreamWriter new_doc;
         public List<string> AllTags = new List<string>();
         public List<string> SuperTagDictionary = new List<string>(new string[] { "ItemGroup" });
@@ -24,41 +25,13 @@ namespace CSPROJ
         {
             this.filePath = path;
             this.org_doc = File.ReadAllLines(filePath + ".csproj");
+            this.temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
             this.new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
         }
 
         // First fixes any missing or damaged tags, then removes any duplicate lines.
         public void RepairCSProj()
         {
-
-
-            // Experimenting with some new techniques
-            XmlReader doc = new XmlTextReader(filePath + ".csproj");
-            while (doc.Read())
-            {
-                if (doc.Name.Length > 0)
-                {
-                    if (doc.Depth == 1 && doc.Name.Length > 0)
-                    {
-                        SuperTagDictionary.Add(doc.Name);
-                    }
-                    //else if (doc.Depth == 2 && doc.Name.Length > 0)
-                    //{
-                    //    MiddleLevelTags.Add(doc.Name);
-                    //}
-                    //else
-                    //{
-                    //    LowerLevelTags.Add(doc.Name);
-                    //}
-                }
-
-            }
-            // Seems to be the only one that works with existing model 
-            SuperTagDictionary = SuperTagDictionary.Distinct().OrderBy(x => x).ToList();
-
-
-
-
             string line;
             long counter = 0;
 
@@ -77,21 +50,46 @@ namespace CSPROJ
                 }
                 else
                 {
-                    new_doc.WriteLine(line);
+                    temp_doc.WriteLine(line);
                     counter++;
                 }
             }
-            new_doc.Flush();
-            new_doc.Close();
+            temp_doc.Flush();
+            temp_doc.Close();
             DuplicateStrategy();
             GetAllTags();
+            RemoveExtraText();
 
+        }
+
+        // Occasionally, extraneous text is inserted into the document and must be removed. 
+        public void RemoveExtraText()
+        {
+            string line;
+            long counter = 1;
+            var tmp_doc = File.ReadAllLines(filePath + "-Temp" + ".csproj");
+            new_doc.WriteLine(tmp_doc[0]); // This line contains the xml version and I don't wanna deal with it. :) 
+            while(counter < tmp_doc.Length)
+            {
+                line = tmp_doc[counter];
+                if(AllTags.Any(x => line.Contains(x)) || line == "")
+                {
+                    new_doc.WriteLine(line);
+                }else
+                {
+                    Console.WriteLine("Disgarding " + line);
+                }
+                counter++;
+            }
+
+            new_doc.Flush();
+            new_doc.Close();   
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
         public void DuplicateStrategy()
         {
-            List<string> temp_Document = File.ReadAllLines(filePath + "-Updated" + ".csproj").ToList();
+            List<string> temp_Document = File.ReadAllLines(filePath + "-Temp" + ".csproj").ToList();
             var compileList = new List<string>();
 
             // Compile tags seem to be the only duplicates which appear.
@@ -111,14 +109,14 @@ namespace CSPROJ
             {
                 temp_Document.Remove(duplicate);
             }
-            new_doc = new StreamWriter(filePath + "-Updated" + ".csproj");
+            temp_doc = new StreamWriter(filePath + "-Temp" + ".csproj");
             foreach (var line in temp_Document)
             {
-                new_doc.WriteLine(line);
+                temp_doc.WriteLine(line);
             }
 
-            new_doc.Flush();
-            new_doc.Close();
+            temp_doc.Flush();
+            temp_doc.Close();
         }
 
         // Internal tags always follow the pattern of:
@@ -137,7 +135,7 @@ namespace CSPROJ
                 line = "<" + tag_value + ">" + value + "</" + tag_value + ">";
             }
 
-            new_doc.WriteLine(line);
+            temp_doc.WriteLine(line);
             counter++;
             return counter;
         }
@@ -158,13 +156,13 @@ namespace CSPROJ
                 var reg = Regex.Match(line, "\"([^\"]*)\"");
                 var CSFile = reg.Groups[1].Value;
                 new_line = "<" + tag + " Include=" + '"' + CSFile + '"' + " />";
-                new_doc.WriteLine(new_line);
+                temp_doc.WriteLine(new_line);
                 counter++;
             }
             else
             {
                 // Keep parsing line by line until you find a line that does not contain part of the TagDictionary
-                new_doc.WriteLine(org_doc[counter]);
+                temp_doc.WriteLine(org_doc[counter]);
                 counter++;
                 while (InternalTagDictionary.Any(x => org_doc[counter].Contains(x)))
                 {
@@ -175,12 +173,12 @@ namespace CSPROJ
                 //If the closing tag is missing, add the proper tag, otherwise just write the line. 
                 if (!org_doc[counter].Contains("</" + tag))
                 {
-                    new_doc.WriteLine("</" + tag + ">");
+                    temp_doc.WriteLine("</" + tag + ">");
                     counter++;
                 }
                 else
                 {
-                    new_doc.WriteLine(org_doc[counter]);
+                    temp_doc.WriteLine(org_doc[counter]);
                     counter++;
                 }
 
@@ -200,7 +198,7 @@ namespace CSPROJ
             var tag = SuperTagDictionary.Where(x => line.Contains(x)).FirstOrDefault();
 
             // Write the SuperTag line and move to the next line
-            new_doc.WriteLine(org_doc[counter]);
+            temp_doc.WriteLine(org_doc[counter]);
             counter++;
 
             while (GeneralTagDictionary.Any(x => org_doc[counter].Contains(x)))
@@ -209,7 +207,7 @@ namespace CSPROJ
             }
             if (!org_doc[counter].Contains("</" + tag))
             {
-                new_doc.WriteLine("</" + tag + ">");
+                temp_doc.WriteLine("</" + tag + ">");
                 counter++;
             }
 
@@ -220,7 +218,7 @@ namespace CSPROJ
         {
             // There's probably a better way to do this than to keep opening up the updated document, but w/e
 
-            XDocument doc = XDocument.Load(filePath + "-Updated" + ".csproj");
+            XDocument doc = XDocument.Load(filePath + "-Temp" + ".csproj");
             var Tags = new List<string>();
 
             foreach (var name in doc.Root.DescendantNodes().OfType<XElement>()
@@ -230,7 +228,7 @@ namespace CSPROJ
             }
 
             // Iunno dude this is at the front of all the tags I want. 
-            AllTags = Tags.Select(y => y.Replace("{http://schemas.microsoft.com/developer/msbuild/2003}","")).ToList();
+            AllTags = Tags.Select(y => y.Replace("{http://schemas.microsoft.com/developer/msbuild/2003}","")).OrderBy(x => x).ToList();
         }
     }
 }
