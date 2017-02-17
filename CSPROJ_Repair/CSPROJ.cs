@@ -82,9 +82,11 @@ namespace CSPROJ
                 }
 
             }
-            TopLevelTags = TopLevelTags.Distinct().ToList();
-            MiddleLevelTags = MiddleLevelTags.Distinct().ToList();
-            LowerLevelTags = LowerLevelTags.Distinct().ToList();
+            TopLevelTags = TopLevelTags.Distinct().OrderBy(x => x).ToList();
+            MiddleLevelTags = MiddleLevelTags.Distinct().OrderBy(x => x).ToList();
+            LowerLevelTags = LowerLevelTags.Distinct().OrderBy(x => x).ToList();
+
+            var HoustonWeHaveAProblem = MiddleLevelTags.Intersect(TopLevelTags);
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
