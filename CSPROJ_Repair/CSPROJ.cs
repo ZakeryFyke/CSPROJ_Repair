@@ -56,8 +56,6 @@ namespace CSPROJ
             new_doc.Close();
             DuplicateStrategy();
             GetAllTags();
-
-            var bo = AllTags.Except(InternalTagDictionary).ToList();
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
