@@ -56,6 +56,35 @@ namespace CSPROJ
             new_doc.Close();
             DuplicateStrategy();
             GetAllTags();
+
+
+            // Experimenting with some new techniques
+            XmlReader doc = new XmlTextReader(filePath + "-Updated" + ".csproj");
+            var TopLevelTags = new List<string>();
+            var MiddleLevelTags = new List<string>();
+            var LowerLevelTags = new List<string>();
+            while (doc.Read())
+            {
+                if(doc.Name.Length > 0)
+                {
+                    if (doc.Depth == 1 && doc.Name.Length > 0)
+                    {
+                        TopLevelTags.Add(doc.Name);
+                    }
+                    else if (doc.Depth == 2 && doc.Name.Length > 0)
+                    {
+                        MiddleLevelTags.Add(doc.Name);
+                    }
+                    else
+                    {
+                        LowerLevelTags.Add(doc.Name);
+                    }
+                }
+
+            }
+            TopLevelTags = TopLevelTags.Distinct().ToList();
+            MiddleLevelTags = MiddleLevelTags.Distinct().ToList();
+            LowerLevelTags = LowerLevelTags.Distinct().ToList();
         }
 
         // Common issue is duplicate <Compile Include= "..." /> tags.
